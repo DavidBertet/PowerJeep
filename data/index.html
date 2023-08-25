@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <meta charset="utf8" />
+    <title>PowerJeep</title>
+
+    <style>
+      /* :root {
+        --primary: #635bff;
+        --primary-active: #0a2540;
+        --background: #1f1b24;
+        --font: #e3edf7;
+        --gauge-0: #673ab7;
+        --gauge-50: #b32985;
+        --gauge-100: #e91e63;
+
+        --max-width: 600px;
+      } */
+      :root {
+        --primary: #e74c3c;
+        --primary-active: #0a2540;
+        --background: #1f1b24;
+        --font: #e3edf7;
+        --gauge-0: #27ae60;
+        --gauge-50: #f39c12;
+        --gauge-100: #e74c3c;
+
+        --max-width: 600px;
+      }
+
+      body {
+        max-width: var(--max-width);
+        margin: auto;
+        background: var(--background);
+        color: var(--font);
+        font-family: "Helvetica Neue", Arial, sans-serif;
+      }
+
+      .content {
+        padding: 0 20px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      h2 {
+        align-self: flex-end;
+        font-weight: 600;
+        margin-bottom: 0px;
+      }
+
+      hr {
+        width: 100%;
+        border-color: var(--background);
+      }
+
+      #loader {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        max-width: var(--max-width);
+        width: 100%;
+        height: 100%;
+        z-index: 10;
+        background: #1f1b24dd;
+        font-weight: 500;
+        font-size: 24px;
+      }
+
+      .visible {
+        visibility: visible;
+        opacity: 1;
+        transition: opacity 0.5s ease-out;
+      }
+
+      .hidden {
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s 0.5s, opacity 0.5s ease-out;
+      }
+
+      #output {
+        padding-top: 10px;
+        font-size: 10px;
+      }
+
+      /*
+        **************
+        Gauge
+        **************
+      */
+
+      .gauge {
+        overflow: hidden;
+        align-self: center;
+        width: 280px;
+        height: 240px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .gauge_svg {
+        filter: url(#shadow);
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .gauge_text {
+        display: flex;
+        padding-top: 18px;
+      }
+
+      .gauge_value {
+        font-size: 80px;
+        font-weight: 600;
+      }
+
+      .gauge_unit {
+        align-self: flex-end;
+        padding-bottom: 16px;
+      }
+
+      .gauge_frontground {
+        fill: none;
+        stroke: url(#GradientColor);
+        stroke-width: 20px;
+        stroke-dasharray: 440;
+        stroke-dashoffset: 147; /* min = 440, max = 147 */
+        transform-origin: 50% 50%;
+        transform: rotate(150deg);
+      }
+
+      .gauge_background {
+        fill: none;
+        stroke: var(--background);
+        stroke-width: 20px;
+        stroke-dasharray: 440;
+        stroke-dashoffset: 147;
+        transform-origin: 50% 50%;
+        transform: rotate(150deg);
+      }
+
+      /*
+        **************
+        Slider
+        **************
+      */
+
+      .slider_container {
+        font-weight: 200;
+        margin: 20px 0;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .slider_label {
+        width: 100px;
+      }
+
+      .slider {
+        appearance: none;
+        -webkit-appearance: none;
+        flex: 1;
+        height: 10px;
+        background: var(--background);
+        outline: none;
+        transition: opacity 0.2s;
+        -webkit-transition: 0.2s;
+        border-radius: 10px;
+        box-shadow: 6px 6px 10px -1px rgba(0, 0, 0, 0.8),
+          -6px -6px 10px -1px rgba(255, 255, 255, 0.15);
+      }
+
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        background: var(--primary);
+        cursor: pointer;
+        border-radius: 100%;
+        box-shadow: 2px 2px 6px -1px rgba(0, 0, 0, 0.8),
+          -2px -2px 6px -1px rgba(255, 255, 255, 0.15);
+      }
+
+      .slider::-moz-range-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 25px;
+        height: 25px;
+        background: var(--primary);
+        cursor: pointer;
+        border-radius: 100%;
+        box-shadow: 2px 2px 6px -1px rgba(0, 0, 0, 0.8),
+          -2px -2px 6px -1px rgba(255, 255, 255, 0.15);
+      }
+
+      /*
+        **************
+        Upload form
+        **************
+      */
+
+      .file_container {
+        align-self: flex-end;
+        position: relative;
+        width: 40px;
+        padding-top: 6px;
+      }
+
+      #upload {
+        position: relative;
+        width: 40px;
+        height: 40px;
+      }
+
+      #upload1 {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #upload2 {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .file_input {
+        position: absolute;
+        width: 40px;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 10;
+        cursor: pointer;
+        opacity: 0;
+      }
+
+      .bounce {
+        animation-name: bounce;
+        animation-duration: 0.6s;
+        animation-iteration-count: infinite;
+        animation-timing-function: ease;
+      }
+
+      @keyframes bounce {
+        0% {
+          transform: translateY(0px);
+        }
+
+        33% {
+          transform: translateY(5px);
+        }
+
+        66% {
+          transform: translateY(-5px);
+        }
+
+        100% {
+          transform: translateY(0px);
+        }
+      }
+
+      /*
+        **************
+        Dialog - https://codepen.io/designcouch/pen/obvKxm
+        **************
+      */
+
+      body.dialog-active {
+        overflow: hidden;
+      }
+
+      #dialog-container {
+        position: fixed;
+        display: table;
+        height: 100%;
+        width: 100%;
+        top: 0;
+        left: 0;
+        transform: scale(0);
+        z-index: 1;
+      }
+
+      #dialog-container .dialog-background {
+        display: table-cell;
+        background: rgba(0, 0, 0, 0.8);
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      #dialog-container .dialog-background .dialog {
+        box-shadow: 2px 2px 20px -1px #e3edf7cc;
+        background: white;
+        padding: 50px;
+        display: inline-block;
+        border-radius: 3px;
+        font-weight: 300;
+        position: relative;
+        color: var(--background);
+      }
+
+      #dialog-container.show {
+        transform: scale(1);
+      }
+
+      #dialog-container.show .dialog-background {
+        background: rgba(0, 0, 0, 0);
+        animation: fadeIn 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+      }
+
+      #dialog-container.show .dialog-background .dialog {
+        opacity: 0;
+        animation: scaleUp 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+      }
+
+      #dialog-container.show + .content {
+        animation: scaleBack 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+      }
+
+      #dialog-container.show.out {
+        animation: quickScaleDown 0s 0.5s linear forwards;
+      }
+
+      #dialog-container.show.out .dialog-background {
+        animation: fadeOut 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+      }
+
+      #dialog-container.show.out .dialog-background .dialog {
+        animation: scaleDown 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+      }
+
+      #dialog-container.show.out + .content {
+        animation: scaleForward 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+      }
+
+      @keyframes fadeIn {
+        0% {
+          background: rgba(0, 0, 0, 0);
+        }
+        100% {
+          background: rgba(0, 0, 0, 0.7);
+        }
+      }
+
+      @keyframes fadeOut {
+        0% {
+          background: rgba(0, 0, 0, 0.7);
+        }
+        100% {
+          background: rgba(0, 0, 0, 0);
+        }
+      }
+
+      @keyframes scaleUp {
+        0% {
+          transform: scale(0.8) translateY(1000px);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1) translateY(0px);
+          opacity: 1;
+        }
+      }
+
+      @keyframes scaleDown {
+        0% {
+          transform: scale(1) translateY(0px);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.8) translateY(1000px);
+          opacity: 0;
+        }
+      }
+
+      @keyframes scaleForward {
+        0% {
+          transform: scale(0.85);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes scaleBack {
+        0% {
+          transform: scale(1);
+        }
+        100% {
+          transform: scale(0.85);
+        }
+      }
+
+      @keyframes quickScaleDown {
+        0% {
+          transform: scale(1);
+        }
+        99.9% {
+          transform: scale(1);
+        }
+        100% {
+          transform: scale(0);
+        }
+      }
+
+      /*
+        **************
+        Other form
+        **************
+      */
+
+      form {
+        width: 100%;
+      }
+
+      button {
+        width: 100%;
+        font-weight: 200;
+        font-size: 15px;
+        background-color: var(--primary);
+        color: var(--font);
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: none;
+        appearance: none;
+        box-shadow: none;
+        transition-duration: 0.2s;
+        transition-property: all;
+      }
+
+      button:active {
+        background-color: var(--primary-active);
+      }
+    </style>
+
+    <script language="javascript" type="text/javascript">
+      var url = "ws://192.168.4.1:80/ws";
+      var emergency_stop = false;
+
+      // Cache views
+      var loader;
+      var speedGaugeValue;
+      var speedGaugeUnit;
+      var speedGaugeFrontground;
+      var stopButton;
+      var maxForwardInput;
+      var maxBackwardInput;
+      var saveButton;
+      var output;
+
+      function init() {
+        loader = document.getElementById("loader");
+        speedGaugeValue = document.getElementById("speed_gauge_value");
+        speedGaugeUnit = document.getElementById("speed_gauge_unit");
+        speedGaugeFrontground = document.getElementById(
+          "speed_gauge_frontground"
+        );
+        stopButton = document.getElementById("stopButton");
+        maxForwardInput = document.getElementById("maxForwardInput");
+        maxBackwardInput = document.getElementById("maxBackwardInput");
+        saveButton = document.getElementById("saveButton");
+        output = document.getElementById("output");
+
+        initDrag();
+
+        // Initial state
+        isConnecting(true);
+        updateEmergencyStop(false);
+        updateGauge(0, false);
+
+        // Start connection
+        wsConnect(url);
+      }
+
+      // **************
+      //   Websocket
+      // **************
+
+      function wsConnect(url) {
+        websocket = new WebSocket(url);
+
+        websocket.onopen = function (evt) {
+          onOpen(evt);
+        };
+        websocket.onclose = function (evt) {
+          onClose(evt);
+        };
+        websocket.onmessage = function (evt) {
+          onMessage(evt);
+        };
+        websocket.onerror = function (evt) {
+          onError(evt);
+        };
+      }
+
+      function onOpen(event) {
+        console.log("Connected");
+
+        websocket.send(JSON.stringify({ command: "read" }));
+
+        output.innerHTML = "Connected";
+
+        isConnecting(false);
+      }
+
+      function onClose(event) {
+        console.log("Disconnected");
+
+        output.innerHTML = "Disconnected";
+
+        isConnecting(true);
+
+        setTimeout(function () {
+          wsConnect(url);
+        }, 2000);
+      }
+
+      function onMessage(event) {
+        console.log("Received " + event.data);
+
+        json = JSON.parse(event.data);
+        if (json.loaded != undefined && json.total != undefined) {
+          progressHandler(json.loaded, json.total);
+          return;
+        }
+        if (json.emergency_stop != undefined) {
+          updateEmergencyStop(json.emergency_stop);
+        }
+        if (json.current_speed != undefined) {
+          updateGauge(Math.abs(json.current_speed), json.emergency_stop || false);
+        }
+        if (json.max_forward != undefined) {
+          maxForwardInput.value = json.max_forward;
+          document.getElementById("maxForwardInputValue").innerHTML =
+            json.max_forward;
+        }
+        if (json.max_backward != undefined) {
+          maxBackwardInput.value = json.max_backward;
+          document.getElementById("maxBackwardInputValue").innerHTML =
+            json.max_backward;
+        }
+      }
+
+      function onError(event) {
+        console.log("Error " + event.data);
+      }
+
+      function send(data) {
+        console.log("Sending " + data);
+        websocket.send(data);
+      }
+
+      // **************
+      //   State update
+      // **************
+
+      function isConnecting(isConnecting) {
+        if (
+          (isConnecting && loader.style.visibility == "visible") ||
+          (!isConnecting && loader.style.visibility == "hidden")
+        ) {
+          return;
+        }
+
+        loader.classList.add(isConnecting ? "visible" : "hidden");
+        loader.classList.remove(isConnecting ? "hidden" : "visible");
+
+        if (isConnecting) updateLoader();
+      }
+
+      function updateLoader() {
+        if (loader.style.visibility == "visible") {
+          setTimeout(function () {
+            updateLoader();
+          }, 1000);
+
+          loader.innerHTML += ".";
+          if (loader.innerHTML.endsWith("....")) {
+            loader.innerHTML = loader.innerHTML.replace("....", "");
+          }
+        }
+      }
+
+      function updateGauge(value, isEmergencyStop) {
+        if (isEmergencyStop) {
+          speedGaugeValue.innerHTML = "🚫";
+          speedGaugeUnit.style.display = "none";
+          speedGaugeFrontground.style.strokeDashoffset = 147;
+          speedGaugeFrontground.style.stroke = "red";
+        } else {
+          value = Math.round(value);
+          speedGaugeValue.innerHTML = value;
+          speedGaugeUnit.style.display = "block";
+          // 0% is 440, 100% is 147
+          speedGaugeFrontground.style.strokeDashoffset =
+            440 - (440 - 147) * (value / 100);
+          speedGaugeFrontground.style.stroke = "url(#GradientColor)";
+        }
+      }
+
+      function updateEmergencyStop(isEmergencyStop) {
+        emergency_stop = isEmergencyStop;
+        stopButton.innerHTML = isEmergencyStop ? "Restart" : "Emergency Stop";
+      }
+
+      function showDialog() {
+        document.body.classList.add("dialog-active");
+
+        dialog = document.getElementById("dialog-container");
+        dialog.classList.remove("out");
+        dialog.classList.add("show");
+      }
+
+      function hideDialog() {
+        document.body.classList.remove("dialog-active");
+
+        dialog = document.getElementById("dialog-container");
+        dialog.classList.add("out");
+      }
+
+      // **************
+      //   Actions
+      // **************
+
+      function initDrag() {
+        let input = document.querySelectorAll(".file_container")[0];
+
+        input.addEventListener("dragenter", function (e) {
+          document.getElementById("upload2").classList.add("bounce");
+        });
+
+        input.addEventListener("dragleave", function (e) {
+          document.getElementById("upload2").classList.remove("bounce");
+        });
+      }
+
+      function onPressEmergencyStop(event) {
+        websocket.send(
+          JSON.stringify({
+            command: "emergency_stop",
+            parameters: { is_enabled: !emergency_stop },
+          })
+        );
+
+        return false;
+      }
+
+      function onPressSave(event) {
+        if (isNaN(maxForwardInput.value) || isNaN(maxBackwardInput.value)) {
+          output.innerHTML = "Error, not a number";
+          return false;
+        }
+        websocket.send(
+          JSON.stringify({
+            command: "update_max",
+            parameters: {
+              max_forward: parseInt(maxForwardInput.value),
+              max_backward: parseInt(maxBackwardInput.value),
+            },
+          })
+        );
+
+        return false;
+      }
+
+      function onSliderInput(event) {
+        document.getElementById(event.id + "Value").innerHTML = event.value;
+      }
+
+      window.addEventListener("load", init, false);
+    </script>
+  </head>
+  <body>
+    <div id="loader">Connecting ...</div>
+
+    <div id="dialog-container">
+      <div class="dialog-background">
+        <div class="dialog">
+          <h1>Upload</h1>
+          <div id="filepath"></div>
+          <progress
+            id="progressBar"
+            value="0"
+            max="100"
+            style="width: 300px"
+          ></progress>
+          <div id="status">Upload will began soon</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <h2>PowerJeep</h2>
+
+      <div class="gauge">
+        <div class="gauge_text">
+          <div id="speed_gauge_value" class="gauge_value">0</div>
+          <div id="speed_gauge_unit" class="gauge_unit">%</div>
+        </div>
+        <svg
+          class="gauge_svg"
+          xmlns="http://www.w3.org/2000/svg"
+          version="1.1"
+          preserveAspectRatio="xMidYMid meet"
+          viewBox="0 0 180 180"
+        >
+          <defs>
+            <filter id="shadow" color-interpolation-filters="sRGB">
+              <feDropShadow
+                dx="3"
+                dy="3"
+                stdDeviation="5"
+                flood-opacity="0.7"
+                flood-color="#000"
+              />
+              <feDropShadow
+                dx="-3"
+                dy="-3"
+                stdDeviation="3"
+                flood-opacity="0.15"
+                flood-color="#fff"
+              />
+            </filter>
+            <linearGradient id="GradientColor">
+              <stop offset="0%" stop-color="var(--gauge-100)" />
+              <stop offset="50%" stop-color="var(--gauge-50)" />
+              <stop offset="100%" stop-color="var(--gauge-0)" />
+            </linearGradient>
+          </defs>
+          <circle
+            class="gauge_background"
+            cx="90"
+            cy="90"
+            r="70"
+            stroke-linecap="round"
+          />
+          <circle
+            id="speed_gauge_frontground"
+            class="gauge_frontground"
+            cx="90"
+            cy="90"
+            r="70"
+            stroke-linecap="round"
+          />
+        </svg>
+      </div>
+
+      <button id="stopButton" onclick="return onPressEmergencyStop(this)">
+        Emergency Stop</button
+      ><br />
+      <hr />
+      <form>
+        <div class="slider_container">
+          <div class="slider_label">Max forward</div>
+          <input
+            id="maxForwardInput"
+            class="slider"
+            type="range"
+            min="20"
+            max="100"
+            value="0"
+            oninput="return onSliderInput(this)"
+          />
+          <div id="maxForwardInputValue">0</div>
+        </div>
+
+        <div class="slider_container">
+          <div class="slider_label">Max backward</div>
+          <input
+            id="maxBackwardInput"
+            class="slider"
+            type="range"
+            min="15"
+            max="40"
+            value="0"
+            oninput="return onSliderInput(this)"
+          />
+          <div id="maxBackwardInputValue">0</div>
+        </div>
+        <button id="saveButton" onclick="return onPressSave(this)">Save</button
+        ><br />
+      </form>
+
+      <div id="output"></div>
+
+      <div class="file_container">
+        <input
+          id="newfile"
+          class="file_input"
+          type="file"
+          onchange="upload()"
+        />
+
+        <div id="upload">
+          <svg
+            version="1.1"
+            id="upload1"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            x="0px"
+            y="0px"
+            viewBox="0 0 384.97 384.97"
+            style="enable-background: new 0 0 384.97 384.97"
+            xml:space="preserve"
+          >
+            <g>
+              <g id="Upload">
+                <path
+                  fill="var(--font)"
+                  d="M372.939,264.641c-6.641,0-12.03,5.39-12.03,12.03v84.212H24.061v-84.212c0-6.641-5.39-12.03-12.03-12.03
+                  S0,270.031,0,276.671v96.242c0,6.641,5.39,12.03,12.03,12.03h360.909c6.641,0,12.03-5.39,12.03-12.03v-96.242
+                  C384.97,270.019,379.58,264.641,372.939,264.641z"
+                />
+              </g>
+            </g>
+          </svg>
+          <svg
+            version="1.1"
+            id="upload2"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            x="0px"
+            y="0px"
+            viewBox="0 0 384.97 384.97"
+            style="enable-background: new 0 0 384.97 384.97"
+            xml:space="preserve"
+          >
+            <g>
+              <g id="Upload">
+                <path
+                  fill="var(--font)"
+                  d="M117.067,103.507l63.46-62.558v235.71c0,6.641,5.438,12.03,12.151,12.03c6.713,0,12.151-5.39,12.151-12.03V40.95
+                  l63.46,62.558c4.74,4.704,12.439,4.704,17.179,0c4.74-4.704,4.752-12.319,0-17.011l-84.2-82.997
+                  c-4.692-4.656-12.584-4.608-17.191,0L99.888,86.496c-4.752,4.704-4.74,12.319,0,17.011
+                  C104.628,108.211,112.327,108.211,117.067,103.507z"
+                />
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <script>
+        function progressHandler(loaded, total) {
+          console.log("Uploaded " + loaded + " bytes of " + total);
+          var status = document.getElementById("status");
+          var progressBar = document.getElementById("progressBar");
+
+          if (loaded == total) {
+            status.innerHTML = "Upload completed!";
+            progressBar.value = 100;
+          } else {
+            var percent = (loaded / total) * 100;
+            progressBar.value = Math.round(percent);
+            status.innerHTML =
+              Math.round(percent) + "% uploaded... please wait";
+          }
+        }
+
+        function upload() {
+          var fileInput = document.getElementById("newfile").files;
+          var filePath = fileInput[0].name;
+          var upload_path = "/upload/" + filePath;
+
+          document.getElementById("filepath").innerHTML = filePath;
+
+          if (fileInput[0].size > 1000 * 1024) {
+            alert("File size must be less than 1000MB!");
+          } else {
+            showDialog();
+
+            var file = fileInput[0];
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+              if (xhttp.readyState == 4) {
+                if (xhttp.status == 200) {
+                  document.open();
+                  document.write(xhttp.responseText);
+                  document.close();
+                } else {
+                  var status = document.getElementById("status");
+                  status.innerHTML =
+                    "Server closed the connection abruptly! Please reload the page";
+                }
+              }
+            };
+            xhttp.open("POST", upload_path, true);
+            xhttp.send(file);
+          }
+        }
+      </script>
+    </div>
+  </body>
+</html>

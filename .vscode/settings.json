@@ -1,0 +1,11 @@
+{
+  "files.associations": {
+    "task.h": "c",
+    "gpio.h": "c",
+    "ledc.h": "c",
+    "event_groups.h": "c",
+    "semphr.h": "c",
+    "esp_http_server.h": "c",
+    "spiffs.h": "c"
+  }
+}
