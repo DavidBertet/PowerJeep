@@ -4,6 +4,10 @@
 
 > Upgrade your electric ride on car with a 18v Ryobi battery and ESP32-powered electronics.
 
+<div align="center">
+   <img src="./docs/web-interface.jpeg" alt="screenshot of the web interface" width="300px"/>
+</div>
+
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -31,7 +35,7 @@ By utilizing an ESP32 microcontroller, we enable enhanced control and monitoring
 - **Easy Customization:** Adapt the project to fit your specific kid car model and requirements.
 
 
-⚠️ This project can send up to 18V to your motor, which usually is 12V! It ramps up power to avoids gearbox damage, but be aware it can potentially fry your motor. Make sure it has the proper airflow to keep it cool
+⚠️ This project can send up to 18V to your motor, when they are usually taking 12V! It ramps up power to avoids gearbox damage, but be aware it can potentially fry your motor. Make sure it has the proper airflow to keep it cool
 
 ## Requirements
 
@@ -77,7 +81,7 @@ To replicate this project, you'll need the following things:
 
 ## Usage
 - Turn on the fuse and drive!
-- Don't forgot to turn the fuse off when you are done.
+- Don't forget to turn the fuse off when you are done.
 - To go further
   - Connect your computer or mobile device to the Wi-Fi network emitted by the car.
   - It should open the page automatically as a captive portal. If it doesn't, open a web browser and enter the IP address http://192.168.4.1 to access the dashboard.
