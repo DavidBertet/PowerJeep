@@ -48,12 +48,15 @@ To replicate this project, you'll need the following things:
 
 ### Electronic components
 
-- 1x ESP32 [On Amazon](https://www.amazon.com/ESP-WROOM-32-Development-Microcontroller-Integrated-Compatible/dp/B08D5ZD528/ref=sr_1_4?keywords=esp32&qid=1686115575&sr=8-4)
-- 1x or 2x LM2596 - Voltage Regulator [On Amazon](https://www.amazon.com/gp/product/B08BLBYWN1/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
-- 1x XH-M609 - DC 12V-36V Voltage Protection Module [On Amazon](https://www.amazon.com/gp/product/B08X3HZ69D/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1)
-- 1x BTS7960 43A High Power Motor Driver Module [On Amazon](https://www.amazon.com/gp/product/B07TFB22H5/ref=ppx_yo_dt_b_asin_title_o09_s00?ie=UTF8&psc=1)
-- 1x 30A Circuit Breaker [On Amazon](https://www.amazon.com/gp/product/B096ZTV3CR/ref=ppx_yo_dt_b_asin_title_o09_s00?ie=UTF8&psc=1)
+- 1x ESP32 [On Amazon](https://www.amazon.com/ESP-WROOM-32-Development-Microcontroller-Integrated-Compatible/dp/B08D5ZD528)
+- 1x or 2x LM2596 - Voltage Regulator [On Amazon](https://www.amazon.com/gp/product/B08BLBYWN1)
+- 1x XH-M609 - DC 12V-36V Voltage Protection Module [On Amazon](https://www.amazon.com/gp/product/B08X3HZ69D)
+- 1x BTS7960 43A High Power Motor Driver Module [On Amazon](https://www.amazon.com/gp/product/B07TFB22H5)
+- 1x 30A Circuit Breaker [On Amazon](https://www.amazon.com/gp/product/B096ZTV3CR)
 - Wires and connectors
+
+Optional
+- 1x Throttle Pedal (permits precise throttle control, not just on/off) [On Amazon](https://www.amazon.com/KIMISS-Motorcycle-Accelerator-Throttle-Universal/dp/B07HMXLZ1H)
 
 ## Assembly
 
@@ -61,6 +64,7 @@ To replicate this project, you'll need the following things:
 
 - Print the battery mount (I used this [one](https://www.thingiverse.com/thing:4587319))
 - Print the component support [Source available on OnShare](https://cad.onshape.com/documents/73e5cd159b60a9bf46e87dae/w/8d4b4ae9f68daee1281f112d/e/6d32cd17a65725a466bf965e?renderMode=0&uiState=64801221829a90766f018f83)
+- Replace the throttle pedal (optional)
 
 ### Software
 
@@ -68,6 +72,7 @@ To replicate this project, you'll need the following things:
 
 1. Begin by cloning this repository to your local machine.
 2. Open the project in VS Code with PlatformIO installed
+2.1 If you replaced the pedal with a hall sensor one, enable WITH_ADC_THROTTLE in `power_wheel.c`. Mine is outputing 1v to 2.6v with 3.3v input, make sure yours is similar or update `get_throttle_position` accordingly.
 3. Connect your ESP32 to your computer
 4. Build & Upload the project
 5. Upload Filesystem
