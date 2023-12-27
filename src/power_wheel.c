@@ -12,6 +12,7 @@
 #include "server.h"
 #include "cJSON.h"
 #include "storage.h"
+#include "utils.h"
 
 static const char *TAG = "drive";
 
@@ -19,11 +20,25 @@ static void drive_task(void *pvParameter);
 static void broadcast_speed_task(void *pvParameter);
 static void led_task(void *pvParameter);
 
+// ADC throttle capability
+
+#define WITH_ADC_THROTTLE 0
+
+#if WITH_ADC_THROTTLE
+#include "driver/adc.h"
+#include "esp_adc_cal.h"
+#endif
+
 // PIN
 
 // - Inputs
+#if WITH_ADC_THROTTLE
+#define GAS_PEDAL_FORWARD_PIN ADC1_CHANNEL_4 // GPIO 32
+#define GAS_PEDAL_BACKWARD_PIN ADC1_CHANNEL_5 // GPIO 33
+#else
 #define GAS_PEDAL_FORWARD_PIN GPIO_NUM_32
 #define GAS_PEDAL_BACKWARD_PIN GPIO_NUM_33
+#endif
 // - Outputs
 #define FORWARD_PWM_PIN GPIO_NUM_18
 #define BACKWARD_PWM_PIN GPIO_NUM_19
@@ -52,6 +67,13 @@ float emergency_stop = false;
 float max_forward = 0;
 float max_backward = 0;
 int led_sleep_delay = 20;
+
+#if WITH_ADC_THROTTLE
+static esp_adc_cal_characteristics_t adc1_chars;
+bool adc_calibration_enabled = false;
+uint32_t adc_average = 0;
+uint32_t adc_voltage = 0;
+#endif
 
 // ***************
 // **** WEBSOCKETS
@@ -145,8 +167,35 @@ end:
 // **** SETUP
 // **********
 
+#if WITH_ADC_THROTTLE
+static bool adc_calibration_init(void) {
+  esp_err_t ret;
+  bool adc_calibration_enabled = false;
+
+  ret = esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_VREF);
+  if (ret == ESP_ERR_NOT_SUPPORTED) {
+    ESP_LOGW(TAG, "Calibration scheme not supported, skip software calibration");
+  } else if (ret == ESP_ERR_INVALID_VERSION) {
+    ESP_LOGW(TAG, "eFuse not burnt, skip software calibration");
+  } else if (ret == ESP_OK) {
+    adc_calibration_enabled = true;
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 0, &adc1_chars);
+  } else {
+    ESP_LOGE(TAG, "Invalid arg");
+  }
+
+  return adc_calibration_enabled;
+}
+#endif
+
 // Setup pin on the board
 void setup_pin() {
+  #if WITH_ADC_THROTTLE
+  adc_calibration_enabled = adc_calibration_init();
+  ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
+  ESP_ERROR_CHECK(adc1_config_channel_atten(GAS_PEDAL_FORWARD_PIN, ADC_ATTEN_DB_11));
+  ESP_ERROR_CHECK(adc1_config_channel_atten(GAS_PEDAL_BACKWARD_PIN, ADC_ATTEN_DB_11));
+  #else
   gpio_reset_pin(GAS_PEDAL_FORWARD_PIN);
   gpio_set_direction(GAS_PEDAL_FORWARD_PIN, GPIO_MODE_INPUT);
   gpio_pullup_en(GAS_PEDAL_FORWARD_PIN);
@@ -154,6 +203,7 @@ void setup_pin() {
   gpio_reset_pin(GAS_PEDAL_BACKWARD_PIN);
   gpio_set_direction(GAS_PEDAL_BACKWARD_PIN, GPIO_MODE_INPUT);
   gpio_pullup_en(GAS_PEDAL_BACKWARD_PIN);
+  #endif
 
   gpio_reset_pin(FORWARD_PWM_PIN);
   gpio_set_direction(FORWARD_PWM_PIN, GPIO_MODE_OUTPUT);
@@ -224,44 +274,63 @@ void setup_driving(void) {
 
 // Speed is a percentage between -100 and 100 (backward and forward)
 void send_values_to_motor(int speed) {
-    float forward_duty_fraction = 0;
-    float backward_duty_fraction = 0;
+  float forward_duty_fraction = 0;
+  float backward_duty_fraction = 0;
 
-    if (speed > 100 || speed < -100) {
-      return;
-    }
+  if (speed > 100 || speed < -100) {
+    return;
+  }
 
-    if (speed > 0) {
-      forward_duty_fraction = speed / 100;
-    } else if (speed < 0) {
-      backward_duty_fraction = speed / 100;
-    }
+  if (speed > 0) {
+    forward_duty_fraction = speed / 100.0f;
+  } else if (speed < 0) {
+    backward_duty_fraction = speed / 100.0f;
+  }
 
-    uint32_t max_duty = (1 << MOTOR_PWM_DUTY_RESOLUTION) - 1;
-	  uint32_t forward_duty = lroundf(forward_duty_fraction * (float)max_duty);
-	  uint32_t backward_duty = -1 * lroundf(backward_duty_fraction * (float)max_duty);
+  uint32_t max_duty = (1 << MOTOR_PWM_DUTY_RESOLUTION) - 1;
+  uint32_t forward_duty = lroundf(forward_duty_fraction * (float)max_duty);
+  uint32_t backward_duty = -1 * lroundf(backward_duty_fraction * (float)max_duty);
 
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_FORWARD, forward_duty));
-  	ESP_ERROR_CHECK(ledc_update_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_FORWARD));
+  ESP_ERROR_CHECK(ledc_set_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_FORWARD, forward_duty));
+  ESP_ERROR_CHECK(ledc_update_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_FORWARD));
 
-	  ESP_ERROR_CHECK(ledc_set_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_BACKWARD, backward_duty));
-	  ESP_ERROR_CHECK(ledc_update_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_BACKWARD));
+  ESP_ERROR_CHECK(ledc_set_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_BACKWARD, backward_duty));
+  ESP_ERROR_CHECK(ledc_update_duty(LEDC_HIGH_SPEED_MODE, MOTOR_PWM_CHANNEL_BACKWARD));
 }
 
 // Return the targeted speed based on the pedal status.
 // It is a percentage between -100 and 100 (backward and forward)
-int get_speed_target(uint8_t forward_pressed, uint8_t backward_pressed) {
-    if ((!forward_pressed && !backward_pressed) ||
-        (forward_pressed && backward_pressed)) {
-      return 0;
-    }
-    
-    if (forward_pressed) {
-      return max_forward;
-    } 
+int get_speed_target(uint8_t forward_position, uint8_t backward_position) {
+  if ((!forward_position && !backward_position) ||
+      (forward_position && backward_position)) {
+    return 0;
+  }
+  
+  if (forward_position) {
+    return min(max_forward, max_forward * (forward_position / 100.0f));
+  } 
 
-    // Backward is negative values
-    return -max_backward;
+  // Backward is negative values
+  return max(-max_backward, -max_backward * (backward_position / 100.0f));
+}
+
+uint8_t get_throttle_position(uint8_t gpio) {
+  #if WITH_ADC_THROTTLE
+  adc_average = 0;
+
+  for (int i = 0; i < 5; ++i) {
+    esp_adc_cal_get_voltage(gpio, &adc1_chars, &adc_voltage);
+    adc_average += adc_voltage;
+  }
+
+  adc_average = adc_average / 5;
+
+  // voltage is between 1000mv and 2600mv
+  // 16 = (2600 - 1000) / 100
+  return min(100, max(0, (int8_t)((adc_average - 1000) / 16.0f)));
+  #else
+  return !gpio_get_level(gpio) ? 100 : 0;
+  #endif
 }
 
 // Blink the led to indicate an emergency stop
@@ -276,51 +345,51 @@ void blink_led_running(int speed) {
 
 // Calculate next step for a smooth transition from current speed to targeted speed
 float compute_next_speed(float current, float target, float delta) {    
-    if (current < target) {
-      // Slow down backward or speed up forward
+  if (current < target) {
+    // Slow down backward or speed up forward
 
-      if (current < 0 && current > -BACKWARD_SHUTOFF_THRESOLD) {
-        // Between -BACKWARD_SHUTOFF_THRESOLD < current < 0, we stop the car
-        return 0;
-      } else if (current > 0 && current < FORWARD_SHUTOFF_THRESOLD) {
-        // Between 0 < current < FORWARD_SHUTOFF_THRESOLD, we set the car to FORWARD_SHUTOFF_THRESOLD
-        return FORWARD_SHUTOFF_THRESOLD;
-      } else if (current < 0) {
-        // Slow down more aggressively if the car is moving quicker than 50%
-        float slowdown_rate = current > 50 ? 0.08 : 0.04;
-        // Safety! Slowing down backward, we must stop the car within a time frame
-        return current + delta * slowdown_rate;
-      } else {
-        // Else we update speed incrementaly
-        return current + SPEED_INCREMENT;
-      }
-
-      // Check if we went too far
-      if (current > target) return target;
-    } else if (current > target) {
-      // Slow down forward or speed up backward
-
-      if (current > 0 && current < FORWARD_SHUTOFF_THRESOLD) {
-        // Between 0 < current < FORWARD_SHUTOFF_THRESOLD, we stop the car
-        return 0;
-      } else if (current < 0 && current > -BACKWARD_SHUTOFF_THRESOLD) {
-        // Between -BACKWARD_SHUTOFF_THRESOLD < current < 0, we set the car to -BACKWARD_SHUTOFF_THRESOLD
-        return -BACKWARD_SHUTOFF_THRESOLD;
-      } else if (current > 0) {
-        // Slow down more aggressively if the car is moving quicker than 50%
-        float slowdown_rate = current > 50 ? 0.08 : 0.04;
-        // Safety! Slowing down forward, we must stop the car within a time frame
-        return current - delta * slowdown_rate;
-      } else {
-        // Else we update speed incrementaly
-        return current - SPEED_INCREMENT;
-      }
-
-      // Check if we went too far
-      if (current < target) return target;
+    if (current < 0 && current > -BACKWARD_SHUTOFF_THRESOLD) {
+      // Between -BACKWARD_SHUTOFF_THRESOLD < current < 0, we stop the car
+      return 0;
+    } else if (current > 0 && current < FORWARD_SHUTOFF_THRESOLD) {
+      // Between 0 < current < FORWARD_SHUTOFF_THRESOLD, we set the car to FORWARD_SHUTOFF_THRESOLD
+      return FORWARD_SHUTOFF_THRESOLD;
+    } else if (current < 0) {
+      // Slow down more aggressively if the car is moving quicker than 50%
+      float slowdown_rate = current > 50 ? 0.08 : 0.04;
+      // Safety! Slowing down backward, we must stop the car within a time frame
+      return current + delta * slowdown_rate;
+    } else {
+      // Else we update speed incrementaly
+      return current + SPEED_INCREMENT;
     }
 
-    return current;
+    // Check if we went too far
+    if (current > target) return target;
+  } else if (current > target) {
+    // Slow down forward or speed up backward
+
+    if (current > 0 && current < FORWARD_SHUTOFF_THRESOLD) {
+      // Between 0 < current < FORWARD_SHUTOFF_THRESOLD, we stop the car
+      return 0;
+    } else if (current < 0 && current > -BACKWARD_SHUTOFF_THRESOLD) {
+      // Between -BACKWARD_SHUTOFF_THRESOLD < current < 0, we set the car to -BACKWARD_SHUTOFF_THRESOLD
+      return -BACKWARD_SHUTOFF_THRESOLD;
+    } else if (current > 0) {
+      // Slow down more aggressively if the car is moving quicker than 50%
+      float slowdown_rate = current > 50 ? 0.08 : 0.04;
+      // Safety! Slowing down forward, we must stop the car within a time frame
+      return current - delta * slowdown_rate;
+    } else {
+      // Else we update speed incrementaly
+      return current - SPEED_INCREMENT;
+    }
+
+    // Check if we went too far
+    if (current < target) return target;
+  }
+
+  return current;
 }
 
 // **********
@@ -347,8 +416,8 @@ static void drive_task(void *pvParameter) {
   int last_update = esp_timer_get_time();
   float delta;
 
-  int forward_pressed = 0;
-  int backward_pressed = 0;
+  int forward_position = 0;
+  int backward_position = 0;
 
   int target = 0;
 
@@ -367,16 +436,16 @@ static void drive_task(void *pvParameter) {
       continue;
     }
 
+    // Update pedal & direction status
+    forward_position = get_throttle_position(GAS_PEDAL_FORWARD_PIN);
+    backward_position = get_throttle_position(GAS_PEDAL_BACKWARD_PIN);
+
+    // Update targeted speed accordingly
+    target = get_speed_target(forward_position, backward_position);
+
     // Take into account a loop could take more than expected
     // This is used to slow down within a fixed timeframe, regardless of the loop duration
     delta = (esp_timer_get_time() - last_update) / 1000;
-
-    // Update pedal & direction status
-    forward_pressed = !gpio_get_level(GAS_PEDAL_FORWARD_PIN);
-    backward_pressed = !gpio_get_level(GAS_PEDAL_BACKWARD_PIN);
-
-    // Update targeted speed accordingly
-    target = get_speed_target(forward_pressed, backward_pressed);
 
     // Compute next speed based on current speed and targeted speed
     current_speed = compute_next_speed(current_speed, target, delta);
