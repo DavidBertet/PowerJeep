@@ -5,7 +5,7 @@
 > Upgrade your electric ride on car with a 18v Ryobi battery and ESP32-powered electronics.
 
 <div align="center">
-   <img src="./docs/web-interface.jpeg" alt="screenshot of the web interface" width="300px"/>
+   <img src="./docs/header.jpg" alt="screenshot of the web interface" width="600px"/>
 </div>
 
 ## Table of Contents
