@@ -1,5 +1,6 @@
 #include "power_wheel.h"
 
+#include <sys/param.h>
 #include <math.h>
 #include "esp_log.h"
 #include "esp_err.h"
@@ -9,7 +10,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 
-#include "server.h"
+#include "websocket.h"
 #include "cJSON.h"
 #include "storage.h"
 #include "utils.h"
@@ -457,8 +458,6 @@ static void drive_task(void *pvParameter) {
 
     // Blink embedded led to have some visible status of the speed
     blink_led_running(current_speed);
-
-    ESP_LOGI(TAG, "{\"current_speed\":%f,\"max_forward\":%f,\"max_backward\":%f,\"emergency_stop\":%f}", current_speed, max_forward, max_backward, emergency_stop);
 
     vTaskDelay(20 / portTICK_PERIOD_MS);
   }

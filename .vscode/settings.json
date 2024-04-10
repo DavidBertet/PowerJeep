@@ -6,6 +6,8 @@
     "event_groups.h": "c",
     "semphr.h": "c",
     "esp_http_server.h": "c",
-    "spiffs.h": "c"
+    "spiffs.h": "c",
+    "websocket.h": "c",
+    "utils.h": "c"
   }
 }

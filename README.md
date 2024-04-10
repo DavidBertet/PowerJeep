@@ -68,32 +68,41 @@ Optional
 
 Here is the diagram with the analog throttle pedal. 3.3v doesn't need to be sent to the pedal for simple switch pedals.
 <div align="center">
-   <img src="./docs/diagram.jpg" alt="screenshot of the web interface" width="600px"/>
+   <img src="./docs/diagram.jpg" alt="screenshot of the web interface" width="700px"/>
 </div>
 
 ### Software
 
+### Pre requisites
+
+- Install VSCode with the PlatformIO extension
+- Install drivers for your ESP32
+
 #### First installation
 
-1. Begin by cloning this repository to your local machine.
-2. Open the project in VS Code with PlatformIO installed
+1. Begin by cloning this repository to your local machine
+2. Open the project in VSCode
 2.1 If you replaced the pedal with a hall sensor one, enable WITH_ADC_THROTTLE in `power_wheel.c`. Mine is outputing 1v to 2.6v with 3.3v input, make sure yours is similar or update `get_throttle_position` accordingly.
 3. Connect your ESP32 to your computer
-4. Build & Upload the project
-5. Upload Filesystem
+4. Open PlatformIO extension on the left bar
+5. Click on "esp32dotit -> General -> Upload" to build & upload the project
+6. Click on "esp32dotit -> Platform -> Upload Filesystem" to build & upload the filesystem (webpage)
 
 ### Update
 
-1. Open the project in VS Code with PlatformIO installed
-2. Build
-3. Turn on the ride on car & Connect to the wifi
-4. Drag and drop firmware.bin from `.pio` folder (or any static resources) onto the upload icon of the webpage
+1. Open the project in VSCode
+2. Open PlatformIO extension on the left bar & build
+3. Turn on the ride on car & connect to the access point wifi emitted by the car
+4. Open the project folder
+5. Drag and drop firmware.bin from `.pio/build/esp32doit-devkit-v1` folder onto the upload icon of the webpage
+
+You can also drag & drop any static files, like `index.html`. In that case it doesn't need to be built
 
 ## Usage
 - Turn on the fuse and drive!
 - Don't forget to turn the fuse off when you are done.
 - To go further
-  - Connect your computer or mobile device to the Wi-Fi network emitted by the car.
+  - Connect your computer or mobile device to the Wi-Fi network emitted by the car. By default it emits an access point "PowerJeep" with password "Rubicon!"
   - It should open the page automatically as a captive portal. If it doesn't, open a web browser and enter the IP address http://192.168.4.1 to access the dashboard.
   - Use the interface to configure the car and view real-time speed. Emergency stop turns off the motor immediately.
 

@@ -9,7 +9,7 @@
 #include "captdns.h"
 #include "power_wheel.h"
 #include "wifi.h"
-#include "server.h"
+#include "webserver.h"
 #include "spiffs.h"
 
 static const char *TAG = "main";
