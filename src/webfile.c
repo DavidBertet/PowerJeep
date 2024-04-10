@@ -1,7 +1,6 @@
 #include "webfile.h"
 
 #include "freertos/task.h"
-#include <sys/param.h>
 #include <sys/unistd.h>
 #include <esp_log.h>
 #include <esp_http_server.h>
@@ -10,6 +9,7 @@
 #include "esp_vfs.h"
 
 #include "websocket.h"
+#include "utils.h"
 
 // Local variables
 
@@ -67,11 +67,11 @@ static const char* get_path_from_uri(char *dest, const char *base_path, const ch
 
   const char *quest = strchr(uri, '?');
   if (quest) {
-    pathlen = MIN(pathlen, quest - uri);
+    pathlen = min(pathlen, quest - uri);
   }
   const char *hash = strchr(uri, '#');
   if (hash) {
-    pathlen = MIN(pathlen, hash - uri);
+    pathlen = min(pathlen, hash - uri);
   }
 
   if (base_pathlen + pathlen + 1 > destsize) {
@@ -189,7 +189,7 @@ static esp_err_t upload_ota_handler(httpd_req_t *req) {
     broadcast_upload_progress(req->content_len - remaining, req->content_len);
 
     // Receive the file part by part into a buffer
-    if ((received = httpd_req_recv(req, scratch_buffer, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
+    if ((received = httpd_req_recv(req, scratch_buffer, min(remaining, SCRATCH_BUFSIZE))) <= 0) {
       if (received == HTTPD_SOCK_ERR_TIMEOUT) {
         // Retry if timeout occurred
         continue;
@@ -274,7 +274,7 @@ static esp_err_t upload_file_handler(httpd_req_t *req, const char *filepath, con
     broadcast_upload_progress(req->content_len - remaining, req->content_len);
 
     // Receive the file part by part into a buffer
-    if ((received = httpd_req_recv(req, scratch_buffer, MIN(remaining, SCRATCH_BUFSIZE))) <= 0) {
+    if ((received = httpd_req_recv(req, scratch_buffer, min(remaining, SCRATCH_BUFSIZE))) <= 0) {
       if (received == HTTPD_SOCK_ERR_TIMEOUT) {
         // Retry if timeout occurred
         continue;
