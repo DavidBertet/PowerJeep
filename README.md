@@ -66,7 +66,7 @@ Optional
 - Print the component support [Source available on OnShare](https://cad.onshape.com/documents/73e5cd159b60a9bf46e87dae/w/8d4b4ae9f68daee1281f112d/e/6d32cd17a65725a466bf965e?renderMode=0&uiState=64801221829a90766f018f83)
 - Replace the throttle pedal (optional)
 
-Here is the diagram with the analog throttle pedal. 3.3v doesn't need to be sent to the pedal for simple switch pedals.
+Here is the diagram with the different components. 3.3v doesn't need to be sent to the pedal for simple switch pedals.
 <div align="center">
    <img src="./docs/diagram.jpg" alt="screenshot of the web interface" width="700px"/>
 </div>
