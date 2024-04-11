@@ -6,13 +6,15 @@
 
 static const char *TAG = "spiffs";
 
+// File system on which is stored the webpage
+
 esp_err_t setup_spiffs(void) {
     ESP_LOGI(TAG, "Initializing SPIFFS");
 
     esp_vfs_spiffs_conf_t conf = {
-      .base_path = "/spiffs",
+      .base_path = SPIFFS_BASE_PATH,
       .partition_label = NULL,
-      .max_files = 10,   // This decides the maximum number of files that can be created on the storage
+      .max_files = SPIFFS_MAX_FILES,
       .format_if_mount_failed = true
     };
 

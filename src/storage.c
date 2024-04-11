@@ -6,6 +6,8 @@
 
 nvs_handle_t storage;
 
+// Long term storage that survives restart
+
 void setup_storage(void) {
   // Init NVS
   esp_err_t ret = nvs_flash_init();
