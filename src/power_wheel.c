@@ -414,7 +414,7 @@ static void broadcast_speed_task(void *pvParameter) {
 
 // Task that drives the car
 static void drive_task(void *pvParameter) {
-  int last_update = esp_timer_get_time();
+  int64_t last_update = esp_timer_get_time();
   float delta;
 
   int forward_position = 0;
