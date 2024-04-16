@@ -28,6 +28,13 @@ static void led_task(void *pvParameter);
 #if WITH_ADC_THROTTLE
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
+
+// voltage is between MIN_THROTTLE_VALUEv and MAX_THROTTLE_VALUEv
+// retrieve those values with setup.html page
+#define MIN_THROTTLE_VALUE 1.0f // v  -- add a small margin (like +0.15) so the car doesn't move when it shouldn't!
+#define MAX_THROTTLE_VALUE 2.6f // v
+#define THROTTLE_RANGE ((MAX_THROTTLE_VALUE - MIN_THROTTLE_VALUE) * 10.0f)
+
 #endif
 
 // PIN
@@ -72,8 +79,18 @@ int led_sleep_delay = 20;
 #if WITH_ADC_THROTTLE
 static esp_adc_cal_characteristics_t adc1_chars;
 bool adc_calibration_enabled = false;
-uint32_t adc_average = 0;
-uint32_t adc_voltage = 0;
+
+uint32_t get_adc_throttle_value(uint8_t gpio) {
+  uint32_t adc_average = 0;
+  uint32_t adc_current = 0;
+
+  for (int i = 0; i < 5; ++i) {
+    esp_adc_cal_get_voltage(gpio, &adc1_chars, &adc_current);
+    adc_average += adc_current;
+  }
+
+  return adc_average / 5;
+}
 #endif
 
 // ***************
@@ -103,6 +120,20 @@ void broadcast_all_values() {
 void broadcast_current_speed() {
   char *message;
   asprintf(&message, "{\"current_speed\":%f}", current_speed);
+  ESP_LOGI(TAG, "Send %s", message);
+  broadcast_message(message);
+  free(message);
+}
+
+void broadcast_current_throttle() {
+  #if WITH_ADC_THROTTLE
+  float current_throttle = get_adc_throttle_value(GAS_PEDAL_FORWARD_PIN) / 1000.0f;
+  #else
+  float current_throttle = !gpio_get_level(GAS_PEDAL_FORWARD_PIN) ? 1.0f : 0.0f;
+  #endif
+
+  char *message;
+  asprintf(&message, "{\"current_throttle\":%f}", current_throttle);
   ESP_LOGI(TAG, "Send %s", message);
   broadcast_message(message);
   free(message);
@@ -144,6 +175,8 @@ static void data_received(httpd_ws_frame_t* ws_pkt) {
     broadcast_all_values();
   } else if (strcmp("read", command) == 0) {
     broadcast_all_values();
+  } else if (strcmp("read_throttle", command) == 0) {
+    broadcast_current_throttle();
   } else if (strcmp("emergency_stop", command) == 0) {
     cJSON* parameters = cJSON_GetObjectItem(root, "parameters");
     if (parameters == NULL) {
@@ -191,6 +224,7 @@ static bool adc_calibration_init(void) {
 
 // Setup pin on the board
 void setup_pin() {
+  // Throttle
   #if WITH_ADC_THROTTLE
   adc_calibration_enabled = adc_calibration_init();
   ESP_ERROR_CHECK(adc1_config_width(ADC_WIDTH_BIT_DEFAULT));
@@ -206,6 +240,7 @@ void setup_pin() {
   gpio_pullup_en(GAS_PEDAL_BACKWARD_PIN);
   #endif
 
+  // Motor driver
   gpio_reset_pin(FORWARD_PWM_PIN);
   gpio_set_direction(FORWARD_PWM_PIN, GPIO_MODE_OUTPUT);
 
@@ -317,18 +352,9 @@ int get_speed_target(uint8_t forward_position, uint8_t backward_position) {
 
 uint8_t get_throttle_position(uint8_t gpio) {
   #if WITH_ADC_THROTTLE
-  adc_average = 0;
+  uint32_t adc_average = get_adc_throttle_value(gpio);
 
-  for (int i = 0; i < 5; ++i) {
-    esp_adc_cal_get_voltage(gpio, &adc1_chars, &adc_voltage);
-    adc_average += adc_voltage;
-  }
-
-  adc_average = adc_average / 5;
-
-  // voltage is between 1000mv and 2600mv
-  // 16 = (2600 - 1000) / 100
-  return min(100, max(0, (int8_t)((adc_average - 1000) / 16.0f)));
+  return min(100, max(0, (int8_t)((adc_average - 1000) / THROTTLE_RANGE)));
   #else
   return !gpio_get_level(gpio) ? 100 : 0;
   #endif

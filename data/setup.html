@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <meta charset="utf8" />
+    <title>PowerJeep</title>
+
+    <link rel="stylesheet" href="styles.css">
+
+    <script language="javascript" type="text/javascript">
+      var url = "ws://192.168.4.1:80/ws";
+      var isConnected = false;
+      var isSetupMode = false;
+
+      var minThrottle = -1;
+      var maxThrottle = -1;
+
+      // Cache views
+      var throttleValue;
+      var minThrottleValue;
+      var maxThrottleValue;
+      var output;
+
+      function init() {
+        throttleValue = document.getElementById("throttle_value");
+        minThrottleValue = document.getElementById("min_throttle_value");
+        maxThrottleValue = document.getElementById("max_throttle_value");
+        output = document.getElementById("output");
+
+        // Initial state
+        updateConnectionState(false);
+
+        // Start connection
+        wsConnect(url);
+      }
+
+      // **************
+      //   Websocket
+      // **************
+
+      function wsConnect(url) {
+        websocket = new WebSocket(url);
+
+        websocket.onopen = function (evt) {
+          onOpen(evt);
+        };
+        websocket.onclose = function (evt) {
+          onClose(evt);
+        };
+        websocket.onmessage = function (evt) {
+          onMessage(evt);
+        };
+        websocket.onerror = function (evt) {
+          onError(evt);
+        };
+      }
+
+      function onOpen(event) {
+        console.log("Connected");
+
+        output.innerHTML = "Connected";
+
+        wsSend(JSON.stringify({ command: "read" }));
+
+        updateConnectionState(true);
+        readThrottle();
+      }
+
+      function onClose(event) {
+        console.log("Disconnected");
+
+        output.innerHTML = "Disconnected";
+
+        updateConnectionState(false);
+
+        setTimeout(() => {
+          wsConnect(url);
+        }, 2000);
+      }
+
+      function onMessage(event) {
+        console.log("Received " + event.data);
+
+        json = JSON.parse(event.data);
+        if (json.current_throttle != undefined) {
+          updateThrottle(json.current_throttle);
+        }
+        if (json.emergency_stop != undefined) {
+          updateSetupMode(json.emergency_stop);
+        }
+      }
+
+      function onError(event) {
+        console.log("Error " + event.data);
+      }
+
+      function wsSend(data) {
+        console.log("Sending " + data);
+        websocket.send(data);
+      }
+
+      function readThrottle() {
+        if (isConnected) {
+          wsSend(JSON.stringify({ command: "read_throttle" }));
+
+          setTimeout(readThrottle, 500);
+        }
+      }
+
+      // **************
+      //   State update
+      // **************
+
+      function updateConnectionState(_isConnected) {
+        isConnected = _isConnected;
+
+        if (
+          (isConnected && loader.style.visibility == "hidden") ||
+          (!isConnected && loader.style.visibility == "visible")
+        ) {
+          return;
+        }
+
+        loader.classList.add(isConnected ? "hidden" : "visible");
+        loader.classList.remove(isConnected ? "visible" : "hidden");
+
+        if (!isConnected) updateLoader();
+      }
+
+      function updateLoader() {
+        if (loader.style.visibility == "visible") {
+          setTimeout(() => {
+            updateLoader();
+          }, 1000);
+
+          loader.innerHTML += ".";
+          if (loader.innerHTML.endsWith("....")) {
+            loader.innerHTML = loader.innerHTML.replace("....", "");
+          }
+        }
+      }
+
+      function updateThrottle(value) {
+        // Init values
+        if (minThrottle == -1) minThrottle = value;
+        if (maxThrottle == -1) maxThrottle = value;
+
+        // Update values
+        minThrottle = Math.min(minThrottle, value);
+        maxThrottle = Math.max(maxThrottle, value);
+
+        // Print values
+        throttleValue.innerHTML = value;
+        minThrottleValue.innerHTML = minThrottle;
+        maxThrottleValue.innerHTML = maxThrottle;
+      }
+
+      function updateSetupMode(_isSetupMode) {
+        isSetupMode = _isSetupMode;
+        stopButton.innerHTML = isSetupMode ? "Turn off setup mode" : "Turn on setup mode";
+      }
+
+      // **************
+      //   Actions
+      // **************
+
+      function onPressSetupMode(event) {
+        wsSend(
+          JSON.stringify({
+            command: "emergency_stop",
+            parameters: { is_enabled: !isSetupMode },
+          })
+        );
+
+        return false;
+      }
+
+      window.addEventListener("load", init, false);
+    </script>
+  </head>
+  <body>
+    <div id="loader">Connecting ...</div>
+
+    <div class="content">
+      <h2>Setup</h2>
+
+      <div class="gauge_text">
+        <div id="throttle_value" class="gauge_value">0</div>
+        <div class="gauge_unit">v</div>
+      </div>
+
+      <b>Throttle value</b>
+      <div>
+        Min: <span id="min_throttle_value" style="display:contents">unknown</span> v
+      </div>
+      <div>
+        Max: <span id="max_throttle_value" style="display:contents">unknown</span> v
+      </div>
+
+      <br />
+      <button id="stopButton" onclick="return onPressSetupMode(this)">
+        Turn on setup mode
+      </button><br />
+
+      <div id="output"></div>
+    </div>
+  </body>
+</html>
